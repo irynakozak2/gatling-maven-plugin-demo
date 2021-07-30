@@ -32,11 +32,11 @@ class BasicSimulation extends Simulation {
   def generateJsonForBatchESLogs: ChainBuilder = {
     exec(session => {
       var jsonBody: String = """{"logs": ["""
-      for(i <- 1 until 10) {
+      for(i <- 1 until 10000) {
         val x_variable = "log_message" + i
         val tmpLog = session(s"${x_variable}").as[String]
         jsonBody ++= s"""{\"uuid\": \"${getRandomString(36)}\", \"log_time\": \"${timeFormatForES()}\", \"log_message\": \"${tmpLog}\", \"item_id\": ${getRandomInt(5)}, \"launch_id\": ${getRandomInt(5)}, \"last_modified\": \"${timeFormatForES()}\", \"log_level\": ${getRandomInt(5)}, \"attachment_id\": ${getRandomInt(5)}}"""
-        if(i + 1 != 10){
+        if(i + 1 != 10000){
           jsonBody ++= ","
         }
       }
@@ -45,7 +45,7 @@ class BasicSimulation extends Simulation {
     })
   }
 
-  val logMessage = csv("log_messages_50testrows.csv").batch(200).queue
+  val logMessage = csv("log_messages_50testrows.csv").batch(2000).queue
   val logsCount = logMessage.readRecords.size
 
   val httpProtocol = http
@@ -56,11 +56,11 @@ class BasicSimulation extends Simulation {
     .userAgentHeader("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:16.0) Gecko/20100101 Firefox/16.0")
 
   val scn = scenario("Scenario Name")
-    .during(30.seconds, exitASAP = false) {
-      feed(logMessage,10)
+    .during(1800.seconds, exitASAP = false) {
+      feed(logMessage, 10000)
         .exec(generateJsonForBatchESLogs)
         .exec(createESLogTest)
     }
 
-  setUp(scn.inject(rampUsers(1).during(30.seconds)).protocols(httpProtocol))
+  setUp(scn.inject(rampUsers(1).during(1800.seconds)).protocols(httpProtocol))
 }
