@@ -14,6 +14,8 @@ import io.gatling.core.structure.ChainBuilder
 
 class BasicSimulation extends Simulation {
 
+  val duration = Integer.getInteger("duration", 1800)
+  val batch_size = System.getProperty("batch_size").toInt
 
   val stringCharsSeq = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
   val intCharsSeq = "123456789"
@@ -32,11 +34,11 @@ class BasicSimulation extends Simulation {
   def generateJsonForBatchESLogs: ChainBuilder = {
     exec(session => {
       var jsonBody: String = """{"logs": ["""
-      for(i <- 1 until 10000) {
+      for(i <- 1 until batch_size) {
         val x_variable = "log_message" + i
         val tmpLog = session(s"${x_variable}").as[String]
         jsonBody ++= s"""{\"uuid\": \"${getRandomString(36)}\", \"log_time\": \"${timeFormatForES()}\", \"log_message\": \"${tmpLog}\", \"item_id\": ${getRandomInt(5)}, \"launch_id\": ${getRandomInt(5)}, \"last_modified\": \"${timeFormatForES()}\", \"log_level\": ${getRandomInt(5)}, \"attachment_id\": ${getRandomInt(5)}}"""
-        if(i + 1 != 10000){
+        if(i + 1 != batch_size){
           jsonBody ++= ","
         }
       }
@@ -56,11 +58,11 @@ class BasicSimulation extends Simulation {
     .userAgentHeader("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:16.0) Gecko/20100101 Firefox/16.0")
 
   val scn = scenario("Scenario Name")
-    .during(1800.seconds, exitASAP = false) {
-      feed(logMessage, 10000)
+    .during(duration.seconds, exitASAP = false) {
+      feed(logMessage, batch_size)
         .exec(generateJsonForBatchESLogs)
         .exec(createESLogTest)
     }
 
-  setUp(scn.inject(rampUsers(1).during(1800.seconds)).protocols(httpProtocol))
+  setUp(scn.inject(rampUsers(1).during(duration.seconds)).protocols(httpProtocol))
 }
